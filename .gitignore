@@ -1,0 +1,7 @@
+bin/
+*.tgz
+*.zip
+voters.json
+voters.compact.json
+data.json
+.DS_Store
