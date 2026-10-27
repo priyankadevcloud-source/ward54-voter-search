@@ -134,17 +134,30 @@
   .same-item .sag { color: #6b7280; font-size: 0.9rem; white-space: nowrap; font-weight: 600; }
   body.modal-open { overflow: hidden; }
 
-  @media print {
-    body * { visibility: hidden !important; }
-    #printRoot, #printRoot * { visibility: visible !important; }
-    #printRoot {
-      position: absolute; left: 0; top: 0; width: 100%; padding: 24px;
-      background: #fff; color: #000;
-    }
-    .overlay { display: none !important; }
-  }
   #printRoot { display: none; }
-  @media print { #printRoot { display: block; } }
+  @media print {
+    html, body {
+      background: #fff !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      height: auto !important;
+      overflow: visible !important;
+    }
+    body * { display: none !important; }
+    #printRoot, #printRoot * { display: revert !important; }
+    #printRoot {
+      display: block !important;
+      position: static !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 12mm !important;
+      background: #fff !important;
+      color: #000 !important;
+      box-shadow: none !important;
+    }
+    @page { size: A4 portrait; margin: 10mm; }
+  }
 </style>
 </head>
 <body>
@@ -369,13 +382,31 @@ function currentVoter() {
 function doPrint(mark) {
   const v = currentVoter();
   if (!v) return;
-  document.getElementById('printRoot').innerHTML = slipHtml(v);
   if (mark) {
     setVerified(v.s, true);
     updateBadge(v);
     renderSameDoor(v);
   }
-  setTimeout(() => window.print(), 50);
+  const w = window.open('', '_blank', 'noopener,noreferrer,width=720,height=900');
+  if (!w) {
+    // popup blocked — fallback to in-page print root
+    const root = document.getElementById('printRoot');
+    root.innerHTML = slipHtml(v);
+    setTimeout(() => window.print(), 50);
+    return;
+  }
+  w.document.open();
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/>
+    <title>Ward ${WARD} Voter Slip</title>
+    <style>
+      @page { size: A4 portrait; margin: 12mm; }
+      html, body { margin: 0; padding: 0; background: #fff; }
+      body { padding: 8mm; font-family: -apple-system, BlinkMacSystemFont, "Noto Sans Telugu", sans-serif; }
+    </style>
+  </head><body>${slipHtml(v)}
+  <script>window.onload=function(){setTimeout(function(){window.print();},50);};<\/script>
+  </body></html>`);
+  w.document.close();
 }
 
 function doPdf() {
