@@ -134,29 +134,33 @@
   .same-item .sag { color: #6b7280; font-size: 0.9rem; white-space: nowrap; font-weight: 600; }
   body.modal-open { overflow: hidden; }
 
-  #printRoot { display: none; }
+  #printRoot {
+    display: none;
+  }
   @media print {
+    @page { size: A4 portrait; margin: 12mm; }
     html, body {
-      background: #fff !important;
       margin: 0 !important;
       padding: 0 !important;
+      background: #fff !important;
       height: auto !important;
       overflow: visible !important;
     }
-    body * { display: none !important; }
-    #printRoot, #printRoot * { display: revert !important; }
+    .app, .overlay, .app *, .overlay * {
+      display: none !important;
+    }
     #printRoot {
       display: block !important;
       position: static !important;
-      width: 100% !important;
-      max-width: 100% !important;
+      width: auto !important;
       margin: 0 !important;
-      padding: 12mm !important;
+      padding: 0 !important;
       background: #fff !important;
       color: #000 !important;
-      box-shadow: none !important;
     }
-    @page { size: A4 portrait; margin: 10mm; }
+    #printRoot * {
+      visibility: visible !important;
+    }
   }
 </style>
 </head>
@@ -387,30 +391,31 @@ function doPrint(mark) {
     updateBadge(v);
     renderSameDoor(v);
   }
-  const w = window.open('', '_blank', 'noopener,noreferrer,width=720,height=900');
-  if (!w) {
-    // popup blocked — fallback to in-page print root
-    const root = document.getElementById('printRoot');
-    root.innerHTML = slipHtml(v);
-    setTimeout(() => window.print(), 50);
-    return;
-  }
-  w.document.open();
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/>
-    <title>Ward ${WARD} Voter Slip</title>
-    <style>
-      @page { size: A4 portrait; margin: 12mm; }
-      html, body { margin: 0; padding: 0; background: #fff; }
-      body { padding: 8mm; font-family: -apple-system, BlinkMacSystemFont, "Noto Sans Telugu", sans-serif; }
-    </style>
-  </head><body>${slipHtml(v)}
-  <script>window.onload=function(){setTimeout(function(){window.print();},50);};<\/script>
-  </body></html>`);
-  w.document.close();
+
+  const root = document.getElementById('printRoot');
+  root.innerHTML = slipHtml(v);
+
+  const cleanup = () => {
+    root.innerHTML = '';
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+
+  // Mobile browsers need a tick so printRoot content is laid out
+  setTimeout(() => {
+    try {
+      window.print();
+    } catch (e) {
+      cleanup();
+      alert('Unable to open print dialog on this device.');
+    }
+    // Some mobile browsers never fire afterprint
+    setTimeout(cleanup, 2000);
+  }, 100);
 }
 
 function doPdf() {
-  // Browser print-to-PDF without marking verified
+  // Same single-page slip; choose "Save as PDF" in the print sheet
   doPrint(false);
 }
 
